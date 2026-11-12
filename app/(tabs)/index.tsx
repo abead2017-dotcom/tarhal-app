@@ -1,48 +1,152 @@
-import { ScrollView, Text, View, TouchableOpacity } from "react-native";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { useRouter } from "expo-router";
+import { useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { ScreenContainer } from "@/components/screen-container";
+import { BrandMark, COLORS, RouteLine, SectionHeading, Tag } from "@/components/tarhal-ui";
+import { VehicleVisual } from "@/components/vehicle-visual";
+import { VEHICLES } from "@/data/vehicles";
 
-/**
- * Home Screen - NativeWind Example
- *
- * This template uses NativeWind (Tailwind CSS for React Native).
- * You can use familiar Tailwind classes directly in className props.
- *
- * Key patterns:
- * - Use `className` instead of `style` for most styling
- * - Theme colors: use tokens directly (bg-background, text-foreground, bg-primary, etc.); no dark: prefix needed
- * - Responsive: standard Tailwind breakpoints work on web
- * - Custom colors defined in tailwind.config.js
- */
 export default function HomeScreen() {
+  const router = useRouter();
+  const [selectedId, setSelectedId] = useState(VEHICLES[0].id);
+  const selected = VEHICLES.find((vehicle) => vehicle.id === selectedId) ?? VEHICLES[0];
+
   return (
-    <ScreenContainer className="p-6">
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-        <View className="flex-1 gap-8">
-          {/* Hero Section */}
-          <View className="items-center gap-2">
-            <Text className="text-4xl font-bold text-foreground">Welcome</Text>
-            <Text className="text-base text-muted text-center">
-              Edit app/(tabs)/index.tsx to get started
-            </Text>
+    <ScreenContainer edges={["top", "left", "right"]}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.topBar}>
+          <View style={styles.brandCopy}>
+            <Text style={styles.brandName}>ترحال</Text>
+            <Text style={styles.brandCaption}>مشوارك يبدأ من هنا</Text>
           </View>
+          <BrandMark size={46} />
+        </View>
 
-          {/* Example Card */}
-          <View className="w-full max-w-sm self-center bg-surface rounded-2xl p-6 shadow-sm border border-border">
-            <Text className="text-lg font-semibold text-foreground mb-2">NativeWind Ready</Text>
-            <Text className="text-sm text-muted leading-relaxed">
-              Use Tailwind CSS classes directly in your React Native components.
-            </Text>
+        <View style={styles.heroCard}>
+          <View style={styles.heroCopy}>
+            <View style={styles.heroTag}>
+              <MaterialCommunityIcons name="map-marker-path" size={15} color={COLORS.petrol} />
+              <Text style={styles.heroTagText}>اختيار يناسب رحلتك</Text>
+            </View>
+            <Text style={styles.heroTitle}>وين نوصلك{"\n"}اليوم؟</Text>
+            <Text style={styles.heroDescription}>اختر المركبة المناسبة، ورتّب تفاصيل مشوارك بخطوات بسيطة.</Text>
           </View>
+          <View style={styles.heroRoute}>
+            <View style={styles.heroRouteDot} />
+            <View style={styles.heroRouteDash} />
+            <MaterialCommunityIcons name="navigation-variant" size={23} color={COLORS.amber} />
+          </View>
+        </View>
 
-          {/* Example Button */}
-          <View className="items-center">
-            <TouchableOpacity className="bg-primary px-6 py-3 rounded-full active:opacity-80">
-              <Text className="text-background font-semibold">Get Started</Text>
-            </TouchableOpacity>
+        <View style={styles.sectionBlock}>
+          <SectionHeading title="اختر نوع المركبة" subtitle="حدد الفئة الأقرب لاحتياجك" />
+          <View style={styles.categoryList}>
+            {VEHICLES.map((vehicle) => {
+              const isSelected = selectedId === vehicle.id;
+              return (
+                <Pressable
+                  key={vehicle.id}
+                  onPress={() => setSelectedId(vehicle.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  style={({ pressed }) => [
+                    styles.categoryChip,
+                    isSelected && styles.categoryChipSelected,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={vehicle.icon as never}
+                    size={18}
+                    color={isSelected ? COLORS.white : COLORS.petrol}
+                  />
+                  <Text style={[styles.categoryText, isSelected && styles.categoryTextSelected]}>{vehicle.name}</Text>
+                </Pressable>
+              );
+            })}
           </View>
+        </View>
+
+        <View style={styles.vehicleCard}>
+          <View style={styles.vehicleCardTop}>
+            <View style={styles.vehicleText}>
+              <Text style={styles.vehicleName}>{selected.title}</Text>
+              <Text style={styles.vehicleDescription}>{selected.description}</Text>
+            </View>
+            <Tag>
+              <Text style={styles.capacityTag}>{selected.seats} ركاب</Text>
+            </Tag>
+          </View>
+          <VehicleVisual vehicle={selected} size="card" />
+          <View style={styles.vehicleCardBottom}>
+            <View style={styles.suitableRow}>
+              <MaterialCommunityIcons name="check-circle-outline" size={17} color={COLORS.petrol} />
+              <Text style={styles.suitableText}>{selected.suitableFor}</Text>
+            </View>
+            <RouteLine compact />
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push({ pathname: "/vehicle/[id]", params: { id: selected.id } })}
+              style={({ pressed }) => [styles.detailsButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.detailsButtonText}>عرض التفاصيل</Text>
+              <MaterialCommunityIcons name="arrow-left" size={20} color={COLORS.petrol} />
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.footerNote}>
+          <MaterialCommunityIcons name="compass-outline" size={17} color={COLORS.muted} />
+          <Text style={styles.footerText}>تجربة اختيار بسيطة، والقرار لك في كل خطوة.</Text>
         </View>
       </ScrollView>
     </ScreenContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  content: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 30, gap: 22 },
+  topBar: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "space-between" },
+  brandCopy: { alignItems: "flex-end", gap: 2 },
+  brandName: { color: COLORS.ink, fontSize: 21, fontWeight: "900", writingDirection: "rtl" },
+  brandCaption: { color: COLORS.muted, fontSize: 12, writingDirection: "rtl" },
+  heroCard: {
+    minHeight: 190,
+    backgroundColor: COLORS.petrolDark,
+    borderRadius: 28,
+    padding: 20,
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    overflow: "hidden",
+  },
+  heroCopy: { flex: 1, alignItems: "flex-end", gap: 10, zIndex: 1 },
+  heroTag: { flexDirection: "row-reverse", alignItems: "center", gap: 5, backgroundColor: "#E4F1EB", borderRadius: 40, paddingHorizontal: 10, paddingVertical: 6 },
+  heroTagText: { color: COLORS.petrolDark, fontSize: 11, fontWeight: "700", writingDirection: "rtl" },
+  heroTitle: { color: COLORS.white, fontSize: 27, lineHeight: 35, fontWeight: "900", textAlign: "right", writingDirection: "rtl" },
+  heroDescription: { color: "#D7E8E2", maxWidth: 225, fontSize: 12, lineHeight: 19, textAlign: "right", writingDirection: "rtl" },
+  heroRoute: { position: "absolute", left: 16, bottom: 19, flexDirection: "row", alignItems: "center", gap: 5, opacity: 0.9 },
+  heroRouteDot: { width: 10, height: 10, borderRadius: 8, backgroundColor: COLORS.white },
+  heroRouteDash: { width: 30, borderTopWidth: 1.5, borderColor: "#C8DED6", borderStyle: "dashed" },
+  sectionBlock: { gap: 14 },
+  categoryList: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 8, paddingVertical: 2 },
+  categoryChip: { flexDirection: "row-reverse", alignItems: "center", gap: 7, borderRadius: 14, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.card, paddingHorizontal: 13, paddingVertical: 11 },
+  categoryChipSelected: { backgroundColor: COLORS.petrol, borderColor: COLORS.petrol },
+  categoryText: { color: COLORS.ink, fontSize: 12, fontWeight: "700", writingDirection: "rtl" },
+  categoryTextSelected: { color: COLORS.white },
+  vehicleCard: { backgroundColor: COLORS.card, borderRadius: 25, borderWidth: 1, borderColor: COLORS.line, padding: 13, gap: 13, shadowColor: "#2D4E47", shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 1 },
+  vehicleCardTop: { flexDirection: "row-reverse", alignItems: "flex-start", justifyContent: "space-between", gap: 8, paddingHorizontal: 3, paddingTop: 3 },
+  vehicleText: { alignItems: "flex-end", flex: 1, gap: 4 },
+  vehicleName: { color: COLORS.ink, fontSize: 17, fontWeight: "800", writingDirection: "rtl" },
+  vehicleDescription: { color: COLORS.muted, fontSize: 12, lineHeight: 18, textAlign: "right", writingDirection: "rtl" },
+  capacityTag: { color: COLORS.petrol, fontSize: 11, fontWeight: "800", writingDirection: "rtl" },
+  vehicleCardBottom: { gap: 10, paddingHorizontal: 4, paddingBottom: 3 },
+  suitableRow: { flexDirection: "row-reverse", alignItems: "center", gap: 7 },
+  suitableText: { color: COLORS.ink, fontSize: 12, writingDirection: "rtl" },
+  detailsButton: { minHeight: 45, borderRadius: 14, borderWidth: 1, borderColor: COLORS.petrol, flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 8 },
+  detailsButtonText: { color: COLORS.petrol, fontSize: 13, fontWeight: "800", writingDirection: "rtl" },
+  footerNote: { flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 7, paddingTop: 1 },
+  footerText: { color: COLORS.muted, fontSize: 11, writingDirection: "rtl" },
+  pressed: { opacity: 0.82, transform: [{ scale: 0.985 }] },
+});

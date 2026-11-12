@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { tripRequests, users, type InsertTripRequest, type InsertUser } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,18 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function createDemoTripRequest(
+  input: Pick<InsertTripRequest, "vehicleId" | "origin" | "destination">,
+) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Managed database is unavailable");
+  }
+
+  const [inserted] = await db
+    .insert(tripRequests)
+    .values({ ...input, requestMode: "demo" })
+    .$returningId();
+
+  return inserted;
+}
