@@ -39,7 +39,9 @@ export async function setSessionToken(token: string): Promise<void> {
 
     // Use SecureStore for native
     console.log("[Auth] Setting session token...");
-    await SecureStore.setItemAsync(SESSION_TOKEN_KEY, token);
+    await SecureStore.setItemAsync(SESSION_TOKEN_KEY, token, {
+      keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+    });
     console.log("[Auth] Session token stored in SecureStore successfully");
   } catch (error) {
     console.error("[Auth] Failed to set session token");
@@ -62,6 +64,17 @@ export async function removeSessionToken(): Promise<void> {
   } catch {
     console.error("[Auth] Failed to remove session token");
   }
+}
+
+export async function prepareSessionTokenForBackground(): Promise<void> {
+  if (Platform.OS === "web") {
+    throw new Error("تتبع الموقع في الخلفية متاح على الهاتف فقط.");
+  }
+  const token = await SecureStore.getItemAsync(SESSION_TOKEN_KEY);
+  if (!token) throw new Error("انتهت جلسة السائق؛ سجّل الدخول مجددًا.");
+  await SecureStore.setItemAsync(SESSION_TOKEN_KEY, token, {
+    keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+  });
 }
 
 export async function getUserInfo(): Promise<User | null> {

@@ -3,12 +3,13 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 
+import { AuthGate } from "@/components/auth-gate";
 import { ScreenContainer } from "@/components/screen-container";
 import { COLORS, PrimaryButton, RouteLine, ScreenHeader } from "@/components/tarhal-ui";
 import { VehicleVisual } from "@/components/vehicle-visual";
 import { getVehicle, isVehicleId } from "@/data/vehicles";
 
-export default function TripRequestScreen() {
+function TripRequestContent() {
   const params = useLocalSearchParams<{ vehicleId?: string | string[] }>();
   const vehicleId = Array.isArray(params.vehicleId) ? params.vehicleId[0] : params.vehicleId;
   const vehicle = getVehicle(vehicleId);
@@ -26,6 +27,10 @@ export default function TripRequestScreen() {
       setError("أدخل نقطة الانطلاق والوجهة للمتابعة.");
       return;
     }
+    if (origin.trim().length > 255 || destination.trim().length > 255) {
+      setError("يجب ألا تتجاوز نقطة الانطلاق أو الوجهة 255 حرفًا.");
+      return;
+    }
     setError("");
     router.push({
       pathname: "/trip/confirm",
@@ -37,7 +42,7 @@ export default function TripRequestScreen() {
     return (
       <ScreenContainer edges={["top", "left", "right"]}>
         <View style={styles.page}>
-          <ScreenHeader title="اختيار المركبة" eyebrow="الخطوة ٢ من ٣" onBack={() => router.replace("/")} />
+          <ScreenHeader title="اختيار المركبة" eyebrow="ترحال" onBack={() => router.replace("/")} />
           <View style={styles.invalidState}>
             <MaterialCommunityIcons name="alert-circle-outline" size={28} color={COLORS.error} />
             <Text style={styles.invalidText}>اختر فئة مركبة صالحة قبل إدخال بيانات الرحلة.</Text>
@@ -87,6 +92,7 @@ export default function TripRequestScreen() {
                       style={styles.input}
                       textAlign="right"
                       returnKeyType="next"
+                      maxLength={255}
                       accessibilityLabel="نقطة الانطلاق"
                     />
                   </View>
@@ -103,6 +109,7 @@ export default function TripRequestScreen() {
                       style={styles.input}
                       textAlign="right"
                       returnKeyType="done"
+                      maxLength={255}
                       accessibilityLabel="الوجهة"
                     />
                   </View>
@@ -114,15 +121,19 @@ export default function TripRequestScreen() {
 
           <View style={styles.hintCard}>
             <MaterialCommunityIcons name="information-outline" size={19} color={COLORS.petrol} />
-            <Text style={styles.hintText}>هذه بيانات تجريبية لمراجعة الطلب فقط؛ لا يوجد حجز أو دفع فعلي.</Text>
+            <Text style={styles.hintText}>بعد إرسال الطلب سيظهر للسائقين المعتمدين فقط، ويشارك السائق موقعه بعد بدء الرحلة.</Text>
           </View>
         </ScrollView>
         <View style={styles.footer}>
-          <PrimaryButton title="مراجعة الطلب" onPress={continueToReview} icon="arrow-back" />
+          <PrimaryButton title="مراجعة طلب الرحلة" onPress={continueToReview} icon="arrow-back" />
         </View>
       </KeyboardAvoidingView>
     </ScreenContainer>
   );
+}
+
+export default function TripRequestScreen() {
+  return <AuthGate title="طلب رحلة">{() => <TripRequestContent />}</AuthGate>;
 }
 
 const styles = StyleSheet.create({

@@ -57,6 +57,10 @@ const publicRuntime = {
     "",
   apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? "",
 };
+const googleMapsPlugin: [string, { androidGoogleMapsApiKey: string }] | undefined =
+  process.env.GOOGLE_MAPS_API_KEY?.trim()
+    ? ["react-native-maps", { androidGoogleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY.trim() }]
+    : undefined;
 
 const config: ExpoConfig = {
   name: env.appName,
@@ -106,6 +110,17 @@ const config: ExpoConfig = {
   plugins: [
     "expo-asset",
     "expo-router",
+    [
+      "expo-location",
+      {
+        locationWhenInUsePermission: "يستخدم ترحال موقعك أثناء القيادة لإظهاره للراكب خلال الرحلة.",
+        locationAlwaysAndWhenInUsePermission: "يستخدم ترحال موقعك أثناء الرحلة حتى عند استخدام تطبيق آخر كي يرى الراكب موقع السيارة.",
+        isIosBackgroundLocationEnabled: true,
+        isAndroidBackgroundLocationEnabled: true,
+        isAndroidForegroundServiceEnabled: true,
+      },
+    ],
+    ...(googleMapsPlugin ? [googleMapsPlugin] : []),
     [
       "expo-audio",
       {

@@ -7,11 +7,13 @@ import { ScreenContainer } from "@/components/screen-container";
 import { BrandMark, COLORS, RouteLine, SectionHeading, Tag } from "@/components/tarhal-ui";
 import { VehicleVisual } from "@/components/vehicle-visual";
 import { VEHICLES } from "@/data/vehicles";
+import { trpc } from "@/lib/trpc";
 
 export default function HomeScreen() {
   const router = useRouter();
   const [selectedId, setSelectedId] = useState(VEHICLES[0].id);
   const selected = VEHICLES.find((vehicle) => vehicle.id === selectedId) ?? VEHICLES[0];
+  const account = trpc.auth.me.useQuery(undefined, { retry: false });
 
   return (
     <ScreenContainer edges={["top", "left", "right"]}>
@@ -38,6 +40,23 @@ export default function HomeScreen() {
             <View style={styles.heroRouteDash} />
             <MaterialCommunityIcons name="navigation-variant" size={23} color={COLORS.amber} />
           </View>
+        </View>
+
+        <View style={styles.quickActions}>
+          <Pressable accessibilityRole="button" onPress={() => router.push("/(tabs)/trips")} style={styles.quickAction}>
+            <MaterialCommunityIcons name="format-list-bulleted" size={19} color={COLORS.petrol} />
+            <Text style={styles.quickActionText}>رحلاتي</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={() => router.push("/driver/apply")} style={styles.quickAction}>
+            <MaterialCommunityIcons name="steering" size={19} color={COLORS.petrol} />
+            <Text style={styles.quickActionText}>وضع السائق</Text>
+          </Pressable>
+          {account.data?.role === "admin" ? (
+            <Pressable accessibilityRole="button" onPress={() => router.push("/admin/drivers")} style={styles.quickAction}>
+              <MaterialCommunityIcons name="account-check-outline" size={19} color={COLORS.petrol} />
+              <Text style={styles.quickActionText}>اعتماد السائقين</Text>
+            </Pressable>
+          ) : null}
         </View>
 
         <View style={styles.sectionBlock}>
@@ -99,7 +118,7 @@ export default function HomeScreen() {
 
         <View style={styles.footerNote}>
           <MaterialCommunityIcons name="compass-outline" size={17} color={COLORS.muted} />
-          <Text style={styles.footerText}>تجربة اختيار بسيطة، والقرار لك في كل خطوة.</Text>
+          <Text style={styles.footerText}>أنشئ رحلة وتابع السيارة بعد قبول السائق.</Text>
         </View>
       </ScrollView>
     </ScreenContainer>
@@ -129,6 +148,9 @@ const styles = StyleSheet.create({
   heroRoute: { position: "absolute", left: 16, bottom: 19, flexDirection: "row", alignItems: "center", gap: 5, opacity: 0.9 },
   heroRouteDot: { width: 10, height: 10, borderRadius: 8, backgroundColor: COLORS.white },
   heroRouteDash: { width: 30, borderTopWidth: 1.5, borderColor: "#C8DED6", borderStyle: "dashed" },
+  quickActions: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 8 },
+  quickAction: { minHeight: 42, flexDirection: "row-reverse", alignItems: "center", justifyContent: "center", gap: 7, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.card },
+  quickActionText: { color: COLORS.ink, fontSize: 11, fontWeight: "800", writingDirection: "rtl" },
   sectionBlock: { gap: 14 },
   categoryList: { flexDirection: "row-reverse", flexWrap: "wrap", gap: 8, paddingVertical: 2 },
   categoryChip: { flexDirection: "row-reverse", alignItems: "center", gap: 7, borderRadius: 14, borderWidth: 1, borderColor: COLORS.line, backgroundColor: COLORS.card, paddingHorizontal: 13, paddingVertical: 11 },

@@ -1,5 +1,6 @@
 import * as Api from "@/lib/_core/api";
 import * as Auth from "@/lib/_core/auth";
+import { stopDriverLocationTracking } from "@/lib/driver-location";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Platform } from "react-native";
 
@@ -76,16 +77,19 @@ export function useAuth(options?: UseAuthOptions) {
 
   const logout = useCallback(async () => {
     try {
+      await stopDriverLocationTracking();
+    } catch {
+      console.error("[Auth] Unable to stop the driver's location task");
+    }
+    try {
       await Api.logout();
     } catch {
       console.error("[Auth] Logout API call failed");
-      // Continue with logout even if API call fails
-    } finally {
-      await Auth.removeSessionToken();
-      await Auth.clearUserInfo();
-      setUser(null);
-      setError(null);
     }
+    await Auth.removeSessionToken();
+    await Auth.clearUserInfo();
+    setUser(null);
+    setError(null);
   }, []);
 
   const isAuthenticated = useMemo(() => Boolean(user), [user]);

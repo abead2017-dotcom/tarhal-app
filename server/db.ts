@@ -1,6 +1,13 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { tripRequests, users, type InsertTripRequest, type InsertUser } from "../drizzle/schema";
+import {
+  rides,
+  tripRequests,
+  users,
+  type InsertTripRequest,
+  type InsertUser,
+  type VehicleCategory,
+} from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -84,7 +91,11 @@ export async function getUserByOpenId(openId: string) {
     return undefined;
   }
 
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.openId, openId))
+    .limit(1);
 
   return result.length > 0 ? result[0] : undefined;
 }
@@ -102,5 +113,23 @@ export async function createDemoTripRequest(
     .values({ ...input, requestMode: "demo" })
     .$returningId();
 
+  return inserted;
+}
+
+export async function createRideRequest(input: {
+  passengerId: number;
+  vehicleId: VehicleCategory;
+  origin: string;
+  destination: string;
+}) {
+  const db = await getDb();
+  if (!db) {
+    throw new Error("Managed database is unavailable");
+  }
+
+  const [inserted] = await db
+    .insert(rides)
+    .values({ ...input, status: "requested" })
+    .$returningId();
   return inserted;
 }

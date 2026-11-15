@@ -1,3 +1,4 @@
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Tabs } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -33,6 +34,13 @@ export default function TabLayout() {
         options={{
           title: "الرئيسية",
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="trips"
+        options={{
+          title: "رحلاتي",
+          tabBarIcon: ({ color }) => <MaterialCommunityIcons size={23} name="map-marker-path" color={color} />,
         }}
       />
     </Tabs>

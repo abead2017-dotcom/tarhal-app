@@ -15,6 +15,13 @@
       "when": 1794397881426,
       "tag": "0001_dusty_sprite",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1794650485817,
+      "tag": "0002_tarhal_rides",
+      "breakpoints": true
     }
   ]
 }
