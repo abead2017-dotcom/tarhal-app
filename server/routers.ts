@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { getSessionCookieName, getSessionCookieOptions } from "./_core/cookies";
+import { currentEmailSessionCookie, getEmailSessionCookieName, getSessionCookieName, getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import {
   adminProcedure,
@@ -11,12 +11,15 @@ import {
 } from "./_core/trpc";
 import {
   driverApplications,
+  emailSessions,
   rideLocations,
   rides,
   users,
   vehicleCategories,
 } from "../drizzle/schema";
 import { createDemoTripRequest, createRideRequest, getDb } from "./db";
+import { validateRideLocationTimestamp } from "./ride-location-validation";
+import { hmacValue } from "./email-auth-crypto";
 
 const vehicleCategory = z.enum(vehicleCategories);
 const tripRequestInput = z.object({
@@ -94,10 +97,39 @@ async function getReadableRide(
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query((opts) => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
+    me: publicProcedure.query(({ ctx }) => {
+      const user = ctx.user;
+      if (!user) return null;
+      return {
+        id: user.id,
+        openId: user.openId,
+        name: user.name,
+        email: user.email,
+        loginMethod: user.loginMethod,
+        role: user.role,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        lastSignedIn: user.lastSignedIn,
+      };
+    }),
+    logout: publicProcedure.mutation(async ({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
+      const authorization = ctx.req.headers.authorization;
+      const bearer = typeof authorization === "string" && authorization.startsWith("Bearer ") ? authorization.slice(7).trim() : undefined;
+      const token = bearer || currentEmailSessionCookie(ctx.req);
+      if (token && process.env.AUTH_SECRET) {
+        const db = await getDb();
+        if (db) {
+          try {
+            await db.update(emailSessions).set({ revokedAt: new Date() }).where(and(eq(emailSessions.tokenHmac, hmacValue("session", token)), isNull(emailSessions.revokedAt)));
+          } catch { /* OAuth bearer tokens do not map to email sessions. */ }
+        }
+      }
       ctx.res.clearCookie(getSessionCookieName(ctx.req), {
+        ...cookieOptions,
+        maxAge: -1,
+      });
+      ctx.res.clearCookie(getEmailSessionCookieName(ctx.req), {
         ...cookieOptions,
         maxAge: -1,
       });
@@ -356,13 +388,6 @@ export const appRouter = router({
             : input.recordedAt
               ? new Date(input.recordedAt)
               : new Date();
-        const observedAt = updatedAt.getTime();
-        if (!Number.isFinite(observedAt) || observedAt > Date.now() + 30_000) {
-          throw new TRPCError({
-            code: "BAD_REQUEST",
-            message: "وقت الموقع غير صالح؛ تحقق من ضبط ساعة الهاتف.",
-          });
-        }
         await db.transaction(async (tx) => {
           const [activeRide] = await tx
             .select({ id: rides.id, startedAt: rides.startedAt })
@@ -382,24 +407,26 @@ export const appRouter = router({
               message: "لا يمكن إرسال الموقع إلا للسائق المعيّن أثناء الرحلة.",
             });
           }
-          if (activeRide.startedAt && observedAt < activeRide.startedAt.getTime() - 30_000) {
-            throw new TRPCError({
-              code: "BAD_REQUEST",
-              message: "تجاهلنا نقطة موقع التُقطت قبل بدء الرحلة.",
-            });
-          }
           const [latestLocation] = await tx
             .select({ updatedAt: rideLocations.updatedAt })
             .from(rideLocations)
             .where(eq(rideLocations.rideId, input.rideId))
             .limit(1);
-          if (
-            latestLocation &&
-            observedAt <= latestLocation.updatedAt.getTime()
-          ) {
+          const timestampError = validateRideLocationTimestamp({
+            observedAt: updatedAt,
+            startedAt: activeRide.startedAt,
+            latestUpdatedAt: latestLocation?.updatedAt,
+          });
+          if (timestampError) {
+            const message =
+              timestampError === "observed_at_before_started_at"
+                ? "تجاهلنا نقطة موقع التُقطت قبل بدء الرحلة."
+                : timestampError === "observed_at_not_newer_than_latest"
+                  ? "تجاهلنا نقطة موقع أقدم من آخر تحديث محفوظ."
+                  : "وقت الموقع غير صالح؛ تحقق من ضبط ساعة الهاتف.";
             throw new TRPCError({
               code: "BAD_REQUEST",
-              message: "تجاهلنا نقطة موقع أقدم من آخر تحديث محفوظ.",
+              message,
             });
           }
           await tx

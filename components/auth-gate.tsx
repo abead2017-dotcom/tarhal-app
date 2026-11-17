@@ -1,5 +1,5 @@
 import type { inferRouterOutputs } from "@trpc/server";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import { useState, type ReactNode } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
@@ -19,6 +19,7 @@ type AuthGateProps = {
 
 export function AuthGate({ children, requireAdmin = false, title = "حسابك" }: AuthGateProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const userQuery = trpc.auth.me.useQuery(undefined, { retry: false, refetchOnMount: "always" });
   const [loginError, setLoginError] = useState("");
   const [openingLogin, setOpeningLogin] = useState(false);
@@ -46,16 +47,39 @@ export function AuthGate({ children, requireAdmin = false, title = "حسابك" 
     );
   }
 
+  if (userQuery.isError && !userQuery.data) {
+    return (
+      <ScreenContainer>
+        <ScreenHeader title={title} eyebrow="ترحال" onBack={() => router.back()} />
+        <View style={styles.center}>
+          <Text style={styles.title}>تعذر التحقق من الحساب</Text>
+          <Text style={styles.copy}>تحقق من اتصال الإنترنت بعنوان الخدمة ثم أعد المحاولة.</Text>
+          <View style={styles.button}>
+            <PrimaryButton title="إعادة المحاولة" onPress={() => void userQuery.refetch()} icon="refresh" />
+          </View>
+        </View>
+      </ScreenContainer>
+    );
+  }
+
   if (!userQuery.data) {
     return (
       <ScreenContainer>
         <ScreenHeader title={title} eyebrow="ترحال" onBack={() => router.back()} />
         <View style={styles.center}>
-          <Text style={styles.title}>سجّل الدخول للمتابعة</Text>
-          <Text style={styles.copy}>يحفظ ترحال الرحلات في حسابك، ويعرض موقع السيارة لصاحب الرحلة فقط.</Text>
+          <Text style={styles.title}>{requireAdmin ? "دخول المشرف" : "سجّل الدخول للمتابعة"}</Text>
+          <Text style={styles.copy}>{requireAdmin ? "استخدم حساب Manus المعتمد لإدارة طلبات السائقين." : "يحفظ ترحال الرحلات في حسابك، ويعرض موقع السيارة لصاحب الرحلة فقط."}</Text>
           {loginError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{loginError}</Text> : null}
           <View style={styles.button}>
-            <PrimaryButton title={openingLogin ? "جارٍ فتح تسجيل الدخول…" : "تسجيل الدخول"} onPress={openLogin} icon="login" disabled={openingLogin} />
+            {requireAdmin ? (
+              <PrimaryButton title={openingLogin ? "جارٍ فتح تسجيل المشرف…" : "دخول المشرف عبر Manus"} onPress={openLogin} icon="login" disabled={openingLogin} />
+            ) : (
+              <PrimaryButton
+                title="تسجيل الدخول بالبريد"
+                onPress={() => router.push({ pathname: "/auth", params: { returnTo: pathname } })}
+                icon="email"
+              />
+            )}
           </View>
         </View>
       </ScreenContainer>

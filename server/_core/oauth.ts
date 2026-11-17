@@ -32,6 +32,9 @@ async function syncUser(userInfo: {
     lastSignedIn,
   });
   const saved = await getUserByOpenId(userInfo.openId);
+  if (!saved || saved.role !== "admin") {
+    throw new Error("Manus OAuth is restricted to administrators");
+  }
   return (
     saved ?? {
       openId: userInfo.openId,
@@ -137,15 +140,6 @@ export function registerOAuthRoutes(app: Express) {
     }
   });
 
-  app.post("/api/auth/logout", (req: Request, res: Response) => {
-    const cookieOptions = getSessionCookieOptions(req);
-    res.clearCookie(getSessionCookieName(req), {
-      ...cookieOptions,
-      maxAge: -1,
-    });
-    res.json({ success: true });
-  });
-
   // Get current authenticated user - works with both cookie (web) and Bearer token (mobile)
   app.get("/api/auth/me", async (req: Request, res: Response) => {
     try {
@@ -164,6 +158,10 @@ export function registerOAuthRoutes(app: Express) {
     try {
       // Authenticate using Bearer token from Authorization header
       const user = await sdk.authenticateRequest(req);
+      if (user.role !== "admin" || user.loginMethod === "email") {
+        res.status(403).json({ error: "Invalid token" });
+        return;
+      }
 
       // Get the token from the Authorization header to set as cookie
       const authHeader = req.headers.authorization || req.headers.Authorization;

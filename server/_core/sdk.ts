@@ -3,10 +3,13 @@ import { ForbiddenError } from "../../shared/_core/errors.js";
 import axios, { type AxiosInstance } from "axios";
 import type { Request } from "express";
 import { SignJWT, jwtVerify } from "jose";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import type { User } from "../../drizzle/schema";
+import { emailSessions, users } from "../../drizzle/schema";
 import * as db from "../db";
 import { ENV } from "./env";
-import { currentSessionCookie } from "./cookies";
+import { currentEmailSessionCookie, currentSessionCookie } from "./cookies";
+import { hmacValue } from "../email-auth-crypto";
 import type {
   ExchangeTokenRequest,
   ExchangeTokenResponse,
@@ -223,11 +226,34 @@ class SDKServer {
   }
 
   async authenticateRequest(req: Request): Promise<AuthenticatedUser> {
-    // Regular authentication flow
     const authHeader = req.headers.authorization || req.headers.Authorization;
     let token: string | undefined;
     if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
       token = authHeader.slice("Bearer ".length).trim();
+    }
+
+    const emailToken = token || currentEmailSessionCookie(req);
+    if (emailToken && process.env.AUTH_SECRET) {
+      try {
+        const database = await db.getDb();
+        if (database) {
+          const [row] = await database
+            .select({ user: users })
+            .from(emailSessions)
+            .innerJoin(users, eq(emailSessions.userId, users.id))
+            .where(
+              and(
+                eq(emailSessions.tokenHmac, hmacValue("session", emailToken)),
+                isNull(emailSessions.revokedAt),
+                gt(emailSessions.expiresAt, new Date()),
+              ),
+            )
+            .limit(1);
+          if (row?.user) return row.user;
+        }
+      } catch {
+        // Never fall back to raw-token identity; continue to existing Manus cookie auth.
+      }
     }
 
     const sessionCookie = token || currentSessionCookie(req);
@@ -270,6 +296,12 @@ class SDKServer {
 
     if (!user) {
       throw ForbiddenError("User not found");
+    }
+
+    // Email identities return above through their HMAC-backed database session.
+    // Any Manus/JWT-backed identity is reserved for administrators.
+    if (user.role !== "admin") {
+      throw ForbiddenError("Manus OAuth is restricted to administrators");
     }
 
     await db.upsertUser({

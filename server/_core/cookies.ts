@@ -53,6 +53,10 @@ export function getSessionCookieName(req: Request): string {
     : `manus_local_session_${SESSION_COOKIE_SUFFIX}`;
 }
 
+export function getEmailSessionCookieName(req: Request): string {
+  return isSecureRequest(req) ? "__Host-tarhal_email_session" : "tarhal_local_email_session";
+}
+
 export function getLegacySessionCookieOptions(
   req: Request,
 ): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
@@ -76,4 +80,9 @@ export function clearLegacySessionCookie(): RequestHandler {
 export function currentSessionCookie(req: Request): string | undefined {
   if (!req.headers.cookie) return undefined;
   return parseCookieHeader(req.headers.cookie)[getSessionCookieName(req)];
+}
+
+export function currentEmailSessionCookie(req: Request): string | undefined {
+  if (!req.headers.cookie) return undefined;
+  return parseCookieHeader(req.headers.cookie)[getEmailSessionCookieName(req)];
 }

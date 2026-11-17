@@ -104,6 +104,16 @@ export async function logout(): Promise<void> {
   });
 }
 
+/** Email-auth endpoints return opaque sessions only to native clients; web uses HttpOnly cookies. */
+export async function emailAuthRequest<T>(endpoint: string, body: unknown): Promise<T> {
+  const headers: Record<string, string> = Platform.OS === "web" ? {} : { "X-Tarhal-Client": "mobile" };
+  return apiCall<T>(endpoint, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+}
+
 // Get current authenticated user (web uses cookie-based auth)
 export async function getMe(): Promise<{
   id: number;

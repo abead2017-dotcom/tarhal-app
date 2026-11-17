@@ -142,3 +142,69 @@ export const rideLocations = mysqlTable(
   (table) => [index("ride_locations_driver_idx").on(table.driverId)],
 );
 export type RideLocation = typeof rideLocations.$inferSelect;
+
+/** Email identities remain separate from Manus OAuth identities. */
+export const emailCredentials = mysqlTable(
+  "email_credentials",
+  {
+    userId: int("userId")
+      .primaryKey()
+      .references(() => users.id, { onDelete: "cascade" }),
+    emailNormalized: varchar("emailNormalized", { length: 320 }).notNull(),
+    passwordHash: varchar("passwordHash", { length: 128 }).notNull(),
+    passwordSalt: varchar("passwordSalt", { length: 64 }).notNull(),
+    verifiedAt: timestamp("verifiedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  },
+  (table) => [uniqueIndex("email_credentials_email_unique").on(table.emailNormalized)],
+);
+
+export const emailOtpChallenges = mysqlTable(
+  "email_otp_challenges",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId").references(() => users.id, { onDelete: "cascade" }),
+    emailNormalized: varchar("emailNormalized", { length: 320 }).notNull(),
+    purpose: mysqlEnum("purpose", ["verify", "reset", "delete"]).notNull(),
+    otpHmac: varchar("otpHmac", { length: 64 }).notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    attempts: int("attempts").default(0).notNull(),
+    consumedAt: timestamp("consumedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("email_otp_email_purpose_idx").on(table.emailNormalized, table.purpose, table.createdAt),
+    index("email_otp_user_idx").on(table.userId),
+  ],
+);
+
+export const emailAuthLimits = mysqlTable(
+  "email_auth_limits",
+  {
+    emailNormalized: varchar("emailNormalized", { length: 320 }).notNull(),
+    action: mysqlEnum("action", ["send", "login"]).notNull(),
+    windowStartedAt: timestamp("windowStartedAt").notNull(),
+    count: int("count").default(0).notNull(),
+    lastSentAt: timestamp("lastSentAt"),
+  },
+  (table) => [uniqueIndex("email_auth_limits_email_action_unique").on(table.emailNormalized, table.action)],
+);
+
+export const emailSessions = mysqlTable(
+  "email_sessions",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    userId: int("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHmac: varchar("tokenHmac", { length: 64 }).notNull(),
+    expiresAt: timestamp("expiresAt").notNull(),
+    revokedAt: timestamp("revokedAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("email_sessions_token_hmac_unique").on(table.tokenHmac),
+    index("email_sessions_user_idx").on(table.userId),
+  ],
+);

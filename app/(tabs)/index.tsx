@@ -43,6 +43,10 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.quickActions}>
+          <Pressable accessibilityRole="button" onPress={() => router.push(account.data ? "/account" : "/auth")} style={styles.quickAction}>
+            <MaterialCommunityIcons name="account-circle-outline" size={19} color={COLORS.petrol} />
+            <Text style={styles.quickActionText}>{account.data ? "حسابي" : "تسجيل الدخول"}</Text>
+          </Pressable>
           <Pressable accessibilityRole="button" onPress={() => router.push("/(tabs)/trips")} style={styles.quickAction}>
             <MaterialCommunityIcons name="format-list-bulleted" size={19} color={COLORS.petrol} />
             <Text style={styles.quickActionText}>رحلاتي</Text>
@@ -50,6 +54,10 @@ export default function HomeScreen() {
           <Pressable accessibilityRole="button" onPress={() => router.push("/driver/apply")} style={styles.quickAction}>
             <MaterialCommunityIcons name="steering" size={19} color={COLORS.petrol} />
             <Text style={styles.quickActionText}>وضع السائق</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={() => router.push("/legal/privacy")} style={styles.quickAction}>
+            <MaterialCommunityIcons name="shield-lock-outline" size={19} color={COLORS.petrol} />
+            <Text style={styles.quickActionText}>الخصوصية</Text>
           </Pressable>
           {account.data?.role === "admin" ? (
             <Pressable accessibilityRole="button" onPress={() => router.push("/admin/drivers")} style={styles.quickAction}>

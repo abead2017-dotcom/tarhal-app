@@ -8,6 +8,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { createCorsMiddleware } from "./cors";
 import { clearLegacySessionCookie } from "./cookies";
+import { registerEmailAuthRoutes } from "../email-auth-routes";
 
 async function startServer() {
   const app = express();
@@ -20,6 +21,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   registerStorageProxy(app);
+  registerEmailAuthRoutes(app);
   registerOAuthRoutes(app);
 
   app.get("/api/health", (_req, res) => {
